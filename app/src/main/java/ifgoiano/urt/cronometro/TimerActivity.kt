@@ -7,28 +7,46 @@ import android.view.View
 import android.widget.EditText
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 
 class TimerActivity : AppCompatActivity() {
 
     private lateinit var timerInput: EditText
     private var countDownTimer: CountDownTimer? = null
     private var running = false
-    private var timeLeftInMillis: Long = 0L
+    private var endTime: Long = 0L
+    private var tempoRestante: Long = 0L
+    private var estavaEmExecucao = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_temporizador)
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-
         timerInput = findViewById(R.id.etTimer)
+
+        if (savedInstanceState != null) {
+            running = savedInstanceState.getBoolean("running", false)
+            endTime = savedInstanceState.getLong("endTime", 0L)
+
+            tempoRestante = endTime - System.currentTimeMillis()
+
+            if (tempoRestante < 0) {
+                tempoRestante = 0
+                running = false
+            }
+
+            if (running) {
+                startTimer()
+            } else {
+                updateTimerUI()
+            }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("running", running)
+        outState.putLong("endTime", endTime)
     }
 
     fun onClickGoToCrono(view: View) {
@@ -44,11 +62,12 @@ class TimerActivity : AppCompatActivity() {
             if (parts.size == 2) {
                 val minutes = parts[0].toIntOrNull() ?: 0
                 val seconds = parts[1].toIntOrNull() ?: 0
-                timeLeftInMillis = ((minutes * 60) + seconds) * 1000L
+                tempoRestante = ((minutes * 60) + seconds) * 1000L
             } else {
-                timeLeftInMillis = 60000L // fallback: 1 minuto
+                tempoRestante = 60000L
             }
 
+            endTime = System.currentTimeMillis() + tempoRestante
             startTimer()
             running = true
         }
@@ -60,9 +79,11 @@ class TimerActivity : AppCompatActivity() {
     }
 
     private fun startTimer() {
-        countDownTimer = object : CountDownTimer(timeLeftInMillis, 1000) {
+        countDownTimer?.cancel() // evita duplicar timers
+
+        countDownTimer = object : CountDownTimer(tempoRestante, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                timeLeftInMillis = millisUntilFinished
+                tempoRestante = millisUntilFinished
                 updateTimerUI()
             }
 
@@ -74,9 +95,14 @@ class TimerActivity : AppCompatActivity() {
     }
 
     private fun updateTimerUI() {
-        val minutes = (timeLeftInMillis / 1000) / 60
-        val seconds = (timeLeftInMillis / 1000) % 60
+        val minutes = (tempoRestante / 1000) / 60
+        val seconds = (tempoRestante / 1000) % 60
         val time = String.format("%02d:%02d", minutes, seconds)
         timerInput.setText(time)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        countDownTimer?.cancel()
     }
 }
