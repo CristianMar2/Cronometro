@@ -15,7 +15,6 @@ class TimerActivity : AppCompatActivity() {
     private var running = false
     private var endTime: Long = 0L
     private var tempoRestante: Long = 0L
-    private var estavaEmExecucao = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
